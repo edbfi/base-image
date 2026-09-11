@@ -27,10 +27,10 @@ ${disclaimer_text}
 fi
 
 echo -ne "
-$(figlet "hotio")
-Donate:        https://hotio.dev/donate
-Documentation: https://hotio.dev${app_uri}
-Support:       https://hotio.dev/discord
+$(figlet "edbfi")
+Upstream:      https://hotio.dev/donate
+Documentation: https://dc.edb.fi${app_uri}
+Support:       https://github.com/edbfi/$(jq -r '.app' <<< "${IMAGE_STATS}")/issues
 Image:         ${image}
 Revision:      ${revision}
 Version:       ${version}

@@ -1,11 +1,16 @@
-name: call-update
-
+# SPDX-License-Identifier: GPL-3.0-only
+name: Prepare image metadata update
 on:
   workflow_dispatch:
-  schedule:
-    - cron:  '0 * * * *'
-
+    inputs:
+      branch:
+        type: choice
+        options: [alpinevpn, noblevpn]
+        required: true
+permissions:
+  contents: read
 jobs:
-  call:
-    uses: hotio/base/.github/workflows/update-on-call.yml@workflows
-    secrets: inherit
+  prepare:
+    uses: ./.github/workflows/update-on-call.yml
+    with:
+      branch: ${{ inputs.branch }}
