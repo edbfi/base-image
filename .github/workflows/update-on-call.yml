@@ -1,92 +1,54 @@
-name: update-on-call
-
+# SPDX-License-Identifier: GPL-3.0-only
+name: prepare-update
 on:
   workflow_call:
-
+    inputs:
+      branch:
+        type: string
+        required: true
+permissions:
+  contents: read
 jobs:
-  get-branches:
-    runs-on: ubuntu-latest
-    outputs:
-      branches: ${{ steps.branches.outputs.branches }}
+  candidate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
     steps:
-      - name: Get all branches for the repository
-        id: branches
-        env:
-          REPOSITORY: ${{ github.repository }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          branches=$(curl -fsSL --header "Authorization: Bearer ${GITHUB_TOKEN}" "https://api.github.com/repos/${REPOSITORY}/branches" | jq -re '.[] | select(.name!="workflows") | [.name] | @csv' | paste -sd, -)
-          echo "branches=[${branches}]" >> "$GITHUB_OUTPUT"
-
-  update:
-    needs: get-branches
-    concurrency:
-      group: ${{ github.repository }}-update-${{ matrix.branches }}
-      cancel-in-progress: true
-    strategy:
-      matrix:
-        branches: ${{ fromJSON(needs.get-branches.outputs.branches) }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v7.0.1
         with:
-          ref: ${{ matrix.branches }}
-          token: ${{ secrets.PERSONAL_TOKEN }}
-
-      - name: Login to ghcr.io
-        continue-on-error: true
-        uses: docker/login-action@v4
+          ref: ${{ inputs.branch }}
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Refresh metadata in an isolated candidate
+        env:
+          BRANCH: ${{ inputs.branch }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          [[ "$BRANCH" =~ ^[a-z0-9][a-z0-9._-]{0,79}$ ]]
+          test -f meta.json
+          git switch -c "update/$BRANCH-$GITHUB_RUN_ID"
+          bash build.sh update
+          python3 -m json.tool meta.json >/dev/null
+          git diff --exit-code -- . ':!meta.json'
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add meta.json
+          if git diff --cached --quiet; then
+            echo 'Metadata is current.' > update-result.txt
+          else
+            git commit -s -m "chore(deps): refresh $BRANCH image metadata"
+            git format-patch -1 --stdout > update.patch
+            git bundle create update.bundle HEAD
+            echo 'Review the retained patch, open a PR, and require full image CI before merge.' > update-result.txt
+          fi
+      - uses: actions/upload-artifact@v7.0.1
         with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Update meta.json
-        continue-on-error: true
-        shell: bash -eo pipefail {0}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          while read -r line; do
-            key="${line%%=*}"
-            key="${key%__command}"
-            command="${line#*=}"
-            value=$(eval "${command}")
-            json=$(cat meta.json)
-            jq --sort-keys --arg key "$key" --arg value "$value" '.[$key] = $value' <<< "${json}" > meta.json
-            echo "Result: [${key}] [${value}]"
-          done < <(jq -r 'to_entries[] | [(.key),.value] | join("=")' < meta.json | grep '__command')
-
-      - name: Update packages.txt
-        continue-on-error: true
-        if: (!endsWith(matrix.branches, 'pr'))
-        env:
-          BRANCH:     ${{ matrix.branches }}
-          REPOSITORY: ${{ github.repository }}
-        run: |
-          IMAGE="ghcr.io/${REPOSITORY}:${BRANCH}"
-          docker run --quiet --rm --entrypoint="" -v "${GITHUB_WORKSPACE}/":/repo -e PACKAGES="/repo/packages.txt" "${IMAGE}" sh -c 'if grep -q alpine < /etc/os-release; then apk upgrade --no-cache --available >/dev/null 2>&1 && apk info --format json --fields name,version 2>/dev/null | jq -re '\''.[] | [.name, .version] | join("=")'\'' | sort > ${PACKAGES}; else export DEBIAN_FRONTEND=noninteractive && apt-get update >/dev/null 2>&1 && apt-get upgrade -y >/dev/null 2>&1 && dpkg-query --showformat="\${Package}=\${Version}\n" --show 2>/dev/null | sort > ${PACKAGES}; fi'
-          if upstream_tag_sha=$(jq -re '.upstream_tag_sha' < meta.json); then
-            packages_txt=$(cat packages.txt)
-            upstream_image=$(jq -re '.upstream_image' < meta.json | sed 's/ghcr.io\///g')
-            upstream_tag=$(jq -re '.upstream_tag' < meta.json)
-            upstream_sha=${upstream_tag_sha//${upstream_tag}-/}
-            upstream_packages_txt=$(curl -fsSL "https://raw.githubusercontent.com/${upstream_image}/${upstream_sha}/packages.txt")
-            rm -f packages.txt && touch packages.txt
-            while read -r line; do
-                package="${line%%=*}"
-                grep -q "${package}" <<< "${upstream_packages_txt}" || echo "${line}" >> packages.txt
-            done <<< "${packages_txt}"
-          fi
-      - name: Commit changes
-        env:
-          BRANCH: ${{ matrix.branches }}
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add meta.json || true
-          git add packages.txt || true
-          if git commit -m "Modified: $(git diff --name-only --staged | paste -sd, - | sed 's/,/, /')"; then
-            git push
-          fi
+          name: metadata-update-${{ inputs.branch }}
+          path: |
+            update-result.txt
+            update.patch
+            update.bundle
+          retention-days: 7
+          if-no-files-found: error
+defaults:
+  run:
+    shell: bash
