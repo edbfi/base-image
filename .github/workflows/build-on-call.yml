@@ -52,6 +52,7 @@ jobs:
             echo 'build_args<<BUILD_ARGS'
             cat evidence/build-args.txt
             echo BUILD_ARGS
+            echo "revision=$(git -C image rev-parse HEAD)"
           } >> "$GITHUB_OUTPUT"
       - uses: docker/setup-buildx-action@v4.3.0
       - name: Build without publishing
@@ -69,6 +70,7 @@ jobs:
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.documentation=https://dc.edb.fi/containers/${{ github.event.repository.name }}
             org.opencontainers.image.vendor=edbfi
+            org.opencontainers.image.revision=${{ steps.metadata.outputs.revision }}
           cache-from: type=gha,scope=${{ inputs.image }}-${{ matrix.arch }}
           cache-to: type=gha,scope=${{ inputs.image }}-${{ matrix.arch }},mode=max
       - name: Smoke test and package inventory
