@@ -1,1 +1,2 @@
-cache-page*.json
+__pycache__/
+*.pyc
