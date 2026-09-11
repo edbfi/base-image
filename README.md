@@ -2,7 +2,7 @@
 
 Native amd64 and arm64 base images derived from [hotio/base](https://github.com/hotio/base), retaining its GPL license, runtime layout and VPN services.
 
-The `workflows` branch contains shared build tooling. `alpinevpn` and `noblevpn` contain their respective Dockerfiles, pinned upstream metadata and runtime files. Documentation belongs at [dc.edb.fi](https://dc.edb.fi/containers/base-image); that site is prepared separately.
+The `workflows` branch contains shared build tooling. `alpinevpn` and `noblevpn` contain their respective Dockerfiles, pinned upstream metadata and runtime files. Documentation belongs at [web.edb.fi](https://web.edb.fi/containers/base-image); that site is prepared separately.
 
 ## Validation and publishing
 
