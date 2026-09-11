@@ -29,7 +29,7 @@ fi
 echo -ne "
 $(figlet "edbfi")
 Upstream:      https://hotio.dev/donate
-Documentation: https://dc.edb.fi${app_uri}
+Documentation: https://web.edb.fi${app_uri}
 Support:       https://github.com/edbfi/$(jq -r '.app' <<< "${IMAGE_STATS}")/issues
 Image:         ${image}
 Revision:      ${revision}
