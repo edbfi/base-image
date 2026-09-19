@@ -14,9 +14,9 @@ The **Prepare image metadata update** workflow produces a patch and recovery bun
 
 Upstream synchronization is prepared by `edbfi/repo-patches` from the explicit `.upstream.json` revision. Conflicts require review; synchronization never replaces published branch history. Keep the upstream license, internal `hotio` runtime account and attribution intact.
 
-Shared Renovate defaults use `edbfi/automation` at `v3.0.0`, with automerge disabled. Run local validation with `python3 -m unittest discover -s tools -p 'test_*.py'`, `actionlint`, and `shellcheck tools/smoke.sh`.
+Shared Renovate defaults use `edbfi/automation` at `v3.0.1`, with automerge disabled. Run local validation with `python3 -m unittest discover -s tools -p 'test_*.py'`, `actionlint`, and `shellcheck tools/smoke.sh`.
 
-Shared CI and Renovate presets use automation `v3.0.0`. The custom checked merger
+Shared CI and Renovate presets use automation `v3.0.1`. The custom checked merger
 is retired. Renovate automerge is explicitly disabled pending verified required
 CI enforcement and a native Renovate canary. The read-only PR policy check
 preserves sign-offs, Conventional Commit titles, review and hold requirements.
