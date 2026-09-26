@@ -13,5 +13,3 @@ The **Publish tested image** workflow is manual. Run it from the image branch (`
 The **Prepare image metadata update** workflow produces a patch and recovery bundle only. Review and apply the candidate on a feature branch, open a PR, and require full image CI before merging. It does not push to any branch. No hourly mutation, website write, account-wide maintenance or external notification is performed by these workflows.
 
 Upstream synchronization is prepared by `edbfi/repo-patches` from the explicit `.upstream.json` revision. Conflicts require review; synchronization never replaces published branch history. Keep the upstream license, internal `hotio` runtime account and attribution intact.
-
-Shared Renovate defaults use `edbfi/automation` at `v1.0.0`, with automerge disabled. Run local validation with `python3 -m unittest discover -s tools -p 'test_*.py'`, `actionlint`, and `shellcheck tools/smoke.sh`.
