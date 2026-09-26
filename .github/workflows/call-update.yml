@@ -1,16 +1,15 @@
-# SPDX-License-Identifier: GPL-3.0-only
-name: Prepare image metadata update
+name: call-update
+
 on:
   workflow_dispatch:
-    inputs:
-      branch:
-        type: choice
-        options: [alpinevpn, noblevpn]
-        required: true
+  schedule:
+    - cron:  '0 * * * *'
+
 permissions:
-  contents: read
+  contents: write
+  packages: write
+
 jobs:
-  prepare:
-    uses: ./.github/workflows/update-on-call.yml
-    with:
-      branch: ${{ inputs.branch }}
+  call:
+    uses: edbfi/base-image/.github/workflows/update-on-call.yml@workflows
+    secrets: inherit
