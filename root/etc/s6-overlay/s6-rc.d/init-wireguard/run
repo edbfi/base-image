@@ -386,19 +386,22 @@ log_inf "[VPN] Performing internet connectivity tests, please wait..."
 # the caller exits when this returns nothing. Warnings go to stderr because the
 # result is captured from stdout.
 ip_lookup() {
-    local family=${1} deadline=$((SECONDS + 90)) attempt=0 response status rc result
+    local family=${1} deadline=$((SECONDS + 90)) attempt=0 response status rc result reason errfile
+    errfile=$(mktemp)
     while ((SECONDS < deadline)); do
         attempt=$((attempt + 1))
         rc=0
-        response=$(curl -sSL "-${family}" --max-time 10 -w '\n%{http_code}' https://wtfismyip.com/json 2> /dev/null) || rc=$?
+        response=$(curl -sSL "-${family}" --max-time 10 -w '\n%{http_code}' https://wtfismyip.com/json 2> "${errfile}") || rc=$?
         status=${response##*$'\n'}
         response=${response%$'\n'*}
         if ((rc == 0)) && [[ ${status} == 200 ]] && result=$(jq -re '"[\(.YourFuckingLocation)] [\(.YourFuckingISP)] [\(.YourFuckingIPAddress)]."' <<< "${response}" 2> /dev/null); then
+            rm -f "${errfile}"
             printf '%s\n' "${result}"
             return 0
         fi
         if ((rc != 0)); then
-            log_wrn "[VPN] [IPV${family}] IP lookup attempt ${attempt} failed: curl exit ${rc}" >&2
+            reason=$(head -c 200 "${errfile}" | tr -s '\n' ' ')
+            log_wrn "[VPN] [IPV${family}] IP lookup attempt ${attempt} failed: curl exit ${rc}${reason:+ (${reason% })}" >&2
         elif [[ ${status} != 200 ]]; then
             log_wrn "[VPN] [IPV${family}] IP lookup attempt ${attempt} failed: HTTP ${status}" >&2
         else
@@ -406,6 +409,7 @@ ip_lookup() {
         fi
         sleep $((attempt < 5 ? attempt * 2 : 10))
     done
+    rm -f "${errfile}"
     return 1
 }
 
